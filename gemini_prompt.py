@@ -4,14 +4,8 @@ from PIL import Image # For loading the image
 import json # To parse JSON output from Gemini
 import os # For managing API key (best practice)
 
-# --- Gemini API Setup ---
-# It's best practice to load API keys from environment variables.
-# genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-# For now, using your direct key, but highly recommend environment variables for production:
-client = genai.Client(api_key="AIzaSyCxWzufYMPlRAfeDZIVMLR_Zc4inoLpowQ")
+client = genai.Client(api_key="API KEY") # PUT YOUR GEMINI API KEY HERE.
 
-# Make sure you are using a Gemini model capable of vision input
-# 'gemini-pro-vision' is a good choice for this, or 'gemini-1.5-flash-001'
 GEMINI_VISION_MODEL_NAME = "gemini-1.5-flash" 
 # or "gemini-1.5-flash-001" if you have access and prefer it.
 
