@@ -22,11 +22,11 @@ for IMAGE_PATH in image_paths:
 
     prompt_text = ", ".join(dynamic_object_list)
 
-    # Step 3: Run Grounded DINO on the image
+    # Run Grounded DINO on the image
     annotated_img, detected_labels = detect_objects(IMAGE_PATH, dynamic_object_list)
     print("✅ Detected:", detected_labels)
 
-    # Step 4: Save and display
+    # Save
     base = os.path.splitext(os.path.basename(IMAGE_PATH))[0]
     OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"{base}_annotated.jpg")
     cv2.imwrite(OUTPUT_PATH, annotated_img)
