@@ -4,7 +4,7 @@ from PIL import Image # For loading the image
 import json # To parse JSON output from Gemini
 import os # For managing API key (best practice)
 
-client = genai.Client(api_key="AIzaSyCB1ctYydl4k0S3chmcwhzMk7kAt9xI8lY") # PUT YOUR GEMINI API KEY HERE.
+client = genai.Client(api_key="API KEY") # PUT YOUR GEMINI API KEY HERE.
 
 GEMINI_VISION_MODEL_NAME = "gemini-1.5-flash" 
 # or "gemini-1.5-flash-001" if you have access and prefer it.
