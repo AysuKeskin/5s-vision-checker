@@ -4,6 +4,57 @@ import cv2
 from gemini_prompt import get_object_list_from_gemini_vision
 from grounded_dino_wrapper import detect_objects
 
+from transformers import CLIPProcessor, CLIPModel
+import torch
+from PIL import Image
+
+# CLIP zero-shot setup
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+clip_model     = CLIPModel.from_pretrained("openai/clip-vit-base-patch32").to(DEVICE)
+clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
+
+def classify_organization(image_path: str) -> tuple[str, float]:
+    """
+    Uses multiple positive vs. negative prompts and averages
+    their cosine similarities to decide.
+    Returns (status, confidence).
+    """
+    # 1) Load & preprocess the image
+    img = Image.open(image_path).convert("RGB")
+    img_inputs = clip_processor(images=img, return_tensors="pt", padding=True).to(DEVICE)
+    with torch.no_grad():
+        img_feat = clip_model.get_image_features(**img_inputs)
+    img_feat = img_feat / img_feat.norm(p=2, dim=-1, keepdim=True)  # normalize
+
+    # 2) Define ensembles of prompts
+    positive = ["a tidy workspace", "an organized office", "a neat desk"]
+    negative = ["a messy workspace", "a cluttered desk", "a disorganized room"]
+
+    # 3) Encode all text prompts
+    pos_inputs = clip_processor(text=positive, return_tensors="pt", padding=True).to(DEVICE)
+    neg_inputs = clip_processor(text=negative, return_tensors="pt", padding=True).to(DEVICE)
+    with torch.no_grad():
+        pos_emb = clip_model.get_text_features(**pos_inputs)
+        neg_emb = clip_model.get_text_features(**neg_inputs)
+
+    # 4) Normalize text embeddings
+    pos_emb = pos_emb / pos_emb.norm(p=2, dim=-1, keepdim=True)
+    neg_emb = neg_emb / neg_emb.norm(p=2, dim=-1, keepdim=True)
+
+    # 5) Compute cosine sims and average
+    #    img_feat: (1,D), pos_emb: (3,D), neg_emb: (3,D)
+    p_sims = (img_feat @ pos_emb.T).squeeze(0)  # shape (3,)
+    n_sims = (img_feat @ neg_emb.T).squeeze(0)  # shape (3,)
+    p_sim  = p_sims.mean().item()
+    n_sim  = n_sims.mean().item()
+
+    # 6) Decide and compute confidence margin
+    status = "organized" if p_sim > n_sim else "cluttered"
+    confidence = abs(p_sim - n_sim)
+
+    return status, confidence
+
+
 # ---------- Settings ----------
 # Folders
 INPUT_DIR  = "inputs/Office genel"
@@ -25,6 +76,19 @@ for IMAGE_PATH in image_paths:
     # Run Grounded DINO on the image
     annotated_img, detected_labels = detect_objects(IMAGE_PATH, dynamic_object_list)
     print("✅ Detected:", detected_labels)
+
+    # Classify overall organization with CLIP
+    status = classify_organization(IMAGE_PATH)
+    print(f"→ Organization status: {status}")
+    cv2.putText(
+        annotated_img,
+        f"Status: {status}",
+        (10, 30),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        1.0,
+        (0, 0, 255),
+        2
+    )
 
     # Save
     base = os.path.splitext(os.path.basename(IMAGE_PATH))[0]

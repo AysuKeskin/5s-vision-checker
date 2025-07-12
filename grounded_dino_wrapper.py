@@ -8,7 +8,7 @@ import cv2
 MODEL_ID = "IDEA-Research/grounding-dino-base"
 DEVICE   = "cuda" if torch.cuda.is_available() else "cpu"
 
-processor = AutoProcessor.from_pretrained(MODEL_ID)
+processor = AutoProcessor.from_pretrained(MODEL_ID, use_fast=True)
 model     = AutoModelForZeroShotObjectDetection.from_pretrained(MODEL_ID).to(DEVICE)
 
 def detect_objects(image_path: str, object_list: list,
