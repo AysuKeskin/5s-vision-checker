@@ -27,9 +27,22 @@ def classify_organization(image_path: str) -> tuple[str, float]:
     img_feat = img_feat / img_feat.norm(p=2, dim=-1, keepdim=True)  # normalize
 
     # 2) Define ensembles of prompts
-    positive = ["a tidy workspace", "an organized office", "a neat desk"]
-    negative = ["a messy workspace", "a cluttered desk", "a disorganized room"]
-
+    positive = [
+    "a clean desk with clear surfaces",
+    "office supplies neatly arranged", 
+    "paperwork organized in folders",
+    "minimal items on desk surface",
+    "items neatly arranged in their proper places",
+    "books organized on shelves"
+    ]
+    negative = [
+        "papers scattered across desk",
+        "books piled everywhere", 
+        "desk surface covered with items",
+        "cluttered workspace with many objects",
+        "items randomly thrown about",
+        "no clear system for object placement"
+    ]
     # 3) Encode all text prompts
     pos_inputs = clip_processor(text=positive, return_tensors="pt", padding=True).to(DEVICE)
     neg_inputs = clip_processor(text=negative, return_tensors="pt", padding=True).to(DEVICE)
@@ -54,6 +67,31 @@ def classify_organization(image_path: str) -> tuple[str, float]:
 
     return status, confidence
 
+def add_text_with_background(img, text, position, text_color=(255, 255, 255), bg_color=(0, 0, 0), alpha=0.7):
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1.0
+    thickness = 2
+    
+    # Text boyutlarını hesapla
+    (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, thickness)
+    
+    x, y = position
+    
+    # Arka plan dikdörtgeni koordinatları
+    bg_x1, bg_y1 = x - 5, y - text_height - 5
+    bg_x2, bg_y2 = x + text_width + 5, y + baseline + 5
+    
+    # Yarı şeffaf arka plan için overlay oluştur
+    overlay = img.copy()
+    cv2.rectangle(overlay, (bg_x1, bg_y1), (bg_x2, bg_y2), bg_color, -1)
+    
+    # Yarı şeffaf efekt uygula
+    cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0, img)
+    
+    # Text'i ekle
+    cv2.putText(img, text, position, font, font_scale, text_color, thickness)
+    return  img
+    
 
 # ---------- Settings ----------
 # Folders
@@ -80,14 +118,13 @@ for IMAGE_PATH in image_paths:
     # Classify overall organization with CLIP
     status = classify_organization(IMAGE_PATH)
     print(f"→ Organization status: {status}")
-    cv2.putText(
-        annotated_img,
-        f"Status: {status}",
-        (10, 30),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1.0,
-        (0, 0, 255),
-        2
+    add_text_with_background(
+    annotated_img, 
+    f"Status: {status[0]}", 
+    (10, 30),
+    text_color=(255, 255, 255),  # Beyaz text
+    bg_color=(0, 0, 0),          # Siyah arka plan
+    alpha=0.6                    # %60 şeffaflık
     )
 
     # Save
@@ -95,6 +132,7 @@ for IMAGE_PATH in image_paths:
     OUTPUT_PATH = os.path.join(OUTPUT_DIR, f"{base}_annotated.jpg")
     cv2.imwrite(OUTPUT_PATH, annotated_img)
     print(f"💾 Output saved to {OUTPUT_PATH}")
+
 
 
 
